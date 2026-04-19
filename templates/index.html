@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>משימות</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; display: flex; justify-content: center; padding: 50px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 350px; }
+        .task-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 5px; border-bottom: 1px solid #eee; }
+        .done { text-decoration: line-through; color: gray; }
+        .input-group { display: flex; gap: 5px; margin-bottom: 20px; }
+        input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { cursor: pointer; padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>המשימות שלי</h2>
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="משימה חדשה...">
+            <button onclick="addTask()">הוסף</button>
+        </div>
+        <ul id="taskList" style="list-style: none; padding: 0;"></ul>
+    </div>
+
+    <script>
+        async function loadTasks() {
+            const res = await fetch('/tasks/');
+            const tasks = await res.json();
+            const list = document.getElementById('taskList');
+            list.innerHTML = '';
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'task-item';
+                li.innerHTML = `
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}', this.checked)">
+                    <span class="${task.completed ? 'done' : ''}">${task.title}</span>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        async function addTask() {
+            const input = document.getElementById('taskInput');
+            if (!input.value) return;
+            await fetch('/tasks/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: input.value })
+            });
+            input.value = '';
+            loadTasks();
+        }
+
+        async function toggleTask(id, completed) {
+            await fetch(`/tasks/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ completed: completed })
+            });
+            loadTasks();
+        }
+
+        loadTasks();
+    </script>
+</body>
+</html>
