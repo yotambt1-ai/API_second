@@ -18,14 +18,15 @@ def get_all_tasks():
     for task in tasks_from_db:
         task['_id'] = str(task['_id'])
     return jsonify(tasks_from_db)
-
-@tasks_bp.route("/<task_id>", methods=["GET"])
-def get_task_by_id(task_id):
-    task = mongo.db.tasks.find_one({"id": task_id})
-    if not task:
-        raise NotFound(f"task {task_id} not found")
-    task['_id'] = str(task['_id'])
-    return jsonify(task)
+#א
+#פונקציה לחיפוש לפי id
+# @tasks_bp.route("/<task_id>", methods=["GET"])
+# def get_task_by_id(task_id):
+#     task = mongo.db.tasks.find_one({"id": task_id})
+#     if not task:
+#         raise NotFound(f"task {task_id} not found")
+#     task['_id'] = str(task['_id'])
+#     return jsonify(task)
 
 @tasks_bp.route("/", methods=["POST"])
 def add_task():

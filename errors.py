@@ -9,3 +9,10 @@ def handle_exception(e):
         "error": e.name,
         "message": e.description
     }), e.code
+
+@errors_bp.app_errorhandler(Exception)
+def handle_exception(e):
+    return jsonify({
+        "error": "Internal Server Error",
+        "message": str(e)
+    }), 500
