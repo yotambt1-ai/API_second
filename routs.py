@@ -5,6 +5,13 @@ from db import mongo
 
 tasks_bp = Blueprint('tasks_bp', __name__)
 
+def is_only_numbers(value):
+    try:
+        float(value)
+        return True
+    except (ValueError, TypeError):
+        return False
+
 @tasks_bp.route("/", methods=["GET"])
 def get_all_tasks():
     tasks_from_db = list(mongo.db.tasks.find())
@@ -26,6 +33,9 @@ def add_task():
     if not data or "title" not in data:
         raise BadRequest("you need to create a title")
     
+    if is_only_numbers(data.get("title")):
+        raise BadRequest("title cannot be only numbers")
+
     new_task = {
         "id": str(uuid.uuid4()),
         "title": data.get("title"),
@@ -42,7 +52,6 @@ def update_task(task_id):
     if not data:
         raise BadRequest("Missing data for update")
 
-    # אם התקבלה בקשה לעדכן את המשימה כהושלמה, נמחק אותה לגמרי
     if data.get("completed") is True:
         result = mongo.db.tasks.delete_one({"id": task_id})
         if result.deleted_count == 0:
@@ -51,6 +60,8 @@ def update_task(task_id):
 
     update_fields = {}
     if "title" in data:
+        if is_only_numbers(data["title"]):
+            raise BadRequest("title cannot be only numbers")
         update_fields["title"] = data["title"]
     if "completed" in data:
         update_fields["completed"] = data["completed"]

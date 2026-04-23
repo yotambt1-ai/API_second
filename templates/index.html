@@ -2,66 +2,118 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>משימות</title>
+    <title>ניהול משימות</title>
     <style>
-        body { font-family: sans-serif; background: #e74c3c; display: flex; justify-content: center; padding: 50px; direction: rtl; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 350px; text-align: right; }
-        .task-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 5px; border-bottom: 1px solid #eee; }
-        .done { text-decoration: line-through; color: gray; }
-        .input-group { display: flex; gap: 5px; margin-bottom: 20px; }
-        input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: right; }
-        button { cursor: pointer; padding: 8px 15px; background: #c0392b; color: white; border: none; border-radius: 4px; }
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; background-color: #f4f4f9; color: #333; }
+        h1 { text-align: center; }
+        .add-task-container { display: flex; margin-bottom: 20px; }
+        .add-task-container input { flex-grow: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        .add-task-container button { padding: 10px 20px; margin-right: 10px; font-size: 16px; cursor: pointer; background-color: #28a745; color: white; border: none; border-radius: 4px; }
+        ul { list-style-type: none; padding: 0; }
+        .task-item { display: flex; align-items: center; justify-content: space-between; background: white; padding: 15px; margin-bottom: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .task-title { flex-grow: 1; margin: 0 15px; font-size: 18px; }
+        .edit-input { flex-grow: 1; margin: 0 15px; padding: 5px; font-size: 16px; }
+        .btn { padding: 5px 10px; cursor: pointer; border: none; border-radius: 3px; color: white; margin-left: 5px; }
+        .edit-btn { background-color: #007bff; }
+        .delete-btn { background-color: #dc3545; }
+        .save-btn { background-color: #ffc107; color: black; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>המשימות שלי</h2>
-        <div class="input-group">
-            <input type="text" id="taskInput" placeholder="משימה חדשה...">
-            <button onclick="addTask()">הוסף</button>
-        </div>
-        <ul id="taskList" style="list-style: none; padding: 0;"></ul>
+    <h1>רשימת משימות</h1>
+    <div class="add-task-container">
+        <input type="text" id="new-task-title" placeholder="הכנס משימה חדשה...">
+        <button onclick="addTask()">הוסף</button>
     </div>
+    <ul id="task-list"></ul>
 
     <script>
-        async function loadTasks() {
-            const res = await fetch('/tasks/');
-            const tasks = await res.json();
-            const list = document.getElementById('taskList');
-            list.innerHTML = '';
-            tasks.forEach(task => {
-                const li = document.createElement('li');
-                li.className = 'task-item';
-                li.innerHTML = `
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}', this.checked)">
-                    <span class="${task.completed ? 'done' : ''}">${task.title}</span>
-                `;
-                list.appendChild(li);
-            });
+        const taskList = document.getElementById('task-list');
+        const newTaskInput = document.getElementById('new-task-title');
+
+        // משיכת משימות בטעינת הדף
+        async function fetchTasks() {
+            const response = await fetch('/tasks/');
+            const tasks = await response.json();
+            taskList.innerHTML = '';
+            tasks.forEach(task => renderTask(task));
         }
 
+        // הוספת משימה חדשה
         async function addTask() {
-            const input = document.getElementById('taskInput');
-            if (!input.value) return;
-            await fetch('/tasks/', {
+            const title = newTaskInput.value.trim();
+            if (!title) return;
+
+            const response = await fetch('/tasks/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: input.value })
+                body: JSON.stringify({ title })
             });
-            input.value = '';
-            loadTasks();
+
+            if (!response.ok) {
+                const error = await response.json();
+                alert(error.message || 'שגיאה בהוספת המשימה');
+                return;
+            }
+
+            const task = await response.json();
+            renderTask(task);
+            newTaskInput.value = '';
         }
 
-        async function toggleTask(id, completed) {
-            await fetch(`/tasks/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ completed: completed })
-            });
-            loadTasks();
+        // רינדור משימה בודדת למסך
+        function renderTask(task) {
+            const li = document.createElement('li');
+            li.className = 'task-item';
+            li.dataset.id = task.id;
+
+            li.innerHTML = `
+                <span class="task-title">${task.title}</span>
+                <div>
+                    <button class="btn edit-btn">עריכה</button>
+                    <button class="btn delete-btn">מחיקה</button>
+                </div>
+            `;
+            taskList.appendChild(li);
         }
 
-        loadTasks();
+        // טיפול בלחיצות (עריכה ושמירה)
+        taskList.addEventListener('click', async (e) => {
+            const li = e.target.closest('.task-item');
+            if (!li) return;
+            const taskId = li.dataset.id;
+
+            // מחיקת משימה
+            if (e.target.classList.contains('delete-btn')) {
+                await fetch(`/tasks/${taskId}`, { method: 'DELETE' });
+                li.remove();
+            }
+
+            // עריכת משימה (הפיכה לאינפוט)
+            if (e.target.classList.contains('edit-btn')) {
+                const span = li.querySelector('.task-title');
+                const currentTitle = span.textContent;
+                
+                const newTitle = prompt("ערוך את המשימה:", currentTitle);
+                
+                if (newTitle !== null && newTitle.trim() !== "" && newTitle !== currentTitle) {
+                    const response = await fetch(`/tasks/${taskId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: newTitle.trim() })
+                    });
+
+                    if (response.ok) {
+                        span.textContent = newTitle.trim();
+                    } else {
+                        const error = await response.json();
+                        alert(error.message || 'שגיאה בעדכון');
+                    }
+                }
+            }
+        });
+
+        fetchTasks();
     </script>
 </body>
 </html>
